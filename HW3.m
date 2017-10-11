@@ -1,3 +1,8 @@
+clc;
+clear all;
+close all;
+
+
 load fisheriris.mat
 
 y = zeros(length(species),1);
@@ -10,23 +15,17 @@ for i = 1:length(species)
   end
   y(i) = s;
 end
+iris = [meas y];
 
 for runs = 1:10
 
   % Randomly pick out ~50% of the data for training.
   randVar = rand(length(iris),1);
-  Index = randVar >= 0.6; 
+  Index = randVar >= 0.5; 
 
-  %% L2 Regularization
-
-  %Train = 60% of data
-  %Test = 30% of data.
   %Index the data
   iris_train = iris(Index,:);
-
   iris_test = iris(~Index,:);
-
-
 
   for bins = 5:5:20
     
@@ -70,8 +69,7 @@ for runs = 1:10
         T(i).n = children;
         T(i).thresholds = thresholds;
         
-        Entropy(i) = nansum(((m_child)./m_train) .*( -p_pos .* log2(p_pos) - p_neg .* log2(p_neg)));
-        
+        Entropy(i) = nansum(((m_child)./m_train) .*( -p_pos .* log2(p_pos) - p_neg .* log2(p_neg)));        
       end
       
       InformationGain = Entropy_a - Entropy;
@@ -81,11 +79,16 @@ for runs = 1:10
       
       T = T(attribute);
       if(m_IG == Entropy_a)
-        %Perfectly Classified
+        %Perfectly Classified Training Set
         is_done_training = true;
-        labels = 
+        for m = 1:length(T.n)
+          if(~isempty(T.n{m}))
+            labels(m) =  T.n{m}(1,5); %Assume all labels are the same b/c perfectly classified. pick out one.        
+          end
+        end
+        
       else
-        %Needs more work
+        %Tree needs more work
         %From testing, each set can be linearly classified by looking @ 
         %petal length regardless of bin size.
         disp('HELP MAKE MY LIFE HELL...');
@@ -93,12 +96,36 @@ for runs = 1:10
     end
     
     %Get test performance metrics
-    for l = 1:length(iris_test)
-      for t = 1:length(T.thresholds)
-      
-      end 
-    end  
+    runningTotal = 0;
+    for t = 1:length(T.thresholds)
+      if t == 1
+        n = iris_test((iris_test(:, attribute) < T.thresholds(t)),:);
+        
+      elseif t == (length(T.thresholds)+1)
+        n = iris_test((iris_test(:, attribute) >= T.thresholds(t-1)),:);
+      else
+        n = iris_test(((iris_test(:, attribute) < T.thresholds(t)) & (iris_test(:, attribute) >= T.thresholds(t-1))),:);
+      end
+      [correct, ~] = size(n(n(:,5) == labels(t),5));
+      runningTotal = runningTotal + correct;
+    end 
+    accuracy(runs,(bins/5)) = runningTotal/length(iris_test);
   end
-
+  
 end
+
+%Plot Results
+bins = 5:5:20;
+max_accuracy = max(accuracy);
+min_accuracy = min(accuracy);
+mean_accuracy = mean(accuracy);
+figure();
+plot(bins,min_accuracy,'b-*',bins,mean_accuracy,'r-*',bins,max_accuracy,'g-*');
+axis([4,21]);
+grid on;
+xlabel('# of bins');
+ylabel('Accuracy = (# classified correctly)/(total # of samples)');
+title('ID3 Classifier of Iris Dataset');
+
+
 

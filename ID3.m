@@ -97,7 +97,7 @@ for runs = 1:10
     
     %Get test performance metrics
     runningTotal = 0;
-    for t = 1:length(T.thresholds)
+    for t = 1:(length(T.thresholds)+1)
       if t == 1
         n = iris_test((iris_test(:, attribute) < T.thresholds(t)),:);
         
